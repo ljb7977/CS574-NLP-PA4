@@ -89,6 +89,8 @@ class TextDataset(Dataset):
             pos1 = torch.LongTensor([self.pos2idx[pos] for pos in dat['pos1']])
             pos2 = torch.LongTensor([self.pos2idx[pos] for pos in dat['pos2']])
             t = {
+                'sbj': dat['sbj'],
+                'obj': dat['obj'],
                 'tokens': tokens,
                 'pos1': pos1,
                 'pos2': pos2,

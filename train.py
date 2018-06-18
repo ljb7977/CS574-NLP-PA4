@@ -1,3 +1,5 @@
+import numpy
+
 import loader
 import model
 from torch import optim
@@ -27,16 +29,16 @@ class Trainer():
         }
 
         args = {
-            'pos_embed_dim': 256,
-            'word_embed_dim': 256,
+            'pos_embed_dim': 512,
+            'word_embed_dim': 512,
             'words_num': len(self.train_set.word2idx),
             'pos_num': len(self.train_set.pos2idx),
-            'kernel_num': 32,
+            'kernel_num': 128,
             'kernel_sizes': [2, 3, 4, 5],
-            'dropout': 0.2,
+            'dropout': 0.5,
             'static': False
         }
-        batch_size = 4
+        batch_size = 50
         self.cnn_model = model.CNN_Text(args)
         self.learningRate = learning_rate
         self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=batch_size,
@@ -56,41 +58,53 @@ class Trainer():
             optimizer.step()
             print("step: ", i, " loss: ", round(loss.item(), 2))
 
-    def train(self, epochs=5):
-        optimizer = optim.Adam(self.cnn_model.parameters(), lr=self.learningRate, weight_decay=0.05, amsgrad=True)
+    def train(self, mode, epochs=5):
+        optimizer = optim.Adam(self.cnn_model.parameters(), lr=self.learningRate, weight_decay=0.0005, amsgrad=True)
         criterion = nn.CrossEntropyLoss()
         for i in range(epochs):
             print("Epoch " + str(i))
             self.epoch(criterion, optimizer)
-            score = self.validate(epoch=i)
+            self.test(epoch=i)
 
-            torch.save(self.cnn_model, "model/1/" + "_".join((str(i), str(round(score, 2)), "model.model")))
+            torch.save(self.cnn_model, "model/"+str(mode)+"/epoch_"+str(i)+".model")
 
-    def validate(self, epoch):
-        self.cnn_model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for data in self.train_loader:
-                tokens, pos1, pos2, labels = data['tokens'], data['pos1'], data['pos2'], data['rel']
-                logits = self.cnn_model(tokens, pos1, pos2)
-                _, predicted = torch.max(logits, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-        print("on epoch ", epoch, ", Accuracy on dev set: ", 100 * correct / total)
-        return 100 * correct / total
-
-    def test(self, load=False, model_path=None):
+    def test(self, epoch=0, load=False, model_path=None):
         print("Test start for ", model_path)
-        self.cnn_model.eval()
         if load:
             self.cnn_model = torch.load(model_path)
+
+        self.cnn_model.eval()
         result = []
         with torch.no_grad():
             for data in self.test_loader:
                 tokens, pos1, pos2, labels = data['tokens'], data['pos1'], data['pos2'], data['rel']
                 logits = F.softmax(self.cnn_model(tokens, pos1, pos2), dim=1)
-                result.append((labels.squeeze().item(), logits.squeeze()))
+                result.append((data['sbj'], data['obj'], data['rel'].item(), logits.squeeze()))
 
-        return result
+        print("Analysis start: ", epoch)
+        gold_set = set()
+        for dat in self.test_set.data:
+            gold_set.add((dat['sbj'], dat['obj'], dat['rel']))
+        print(gold_set)
+
+        with open("analysis_" + str(epoch) + ".txt", "w") as output:
+            print("model: ", epoch, file=output)
+            print("threshold\trecall\tprecision", file=output)
+
+            for threshold in numpy.arange(0.05, 1, 0.05):
+                predict_set = set()
+
+                for r in result:
+                    sbj, obj, rel, logits = r
+                    indices = numpy.where(logits > threshold)[0].tolist()
+                    # print(indices)
+                    print([(sbj[0], obj[0], i) for i in indices])
+                    predict_set.update([(sbj[0], obj[0], i) for i in indices])
+
+                correct_set = predict_set & gold_set
+
+                precision = len(correct_set)/len(predict_set)
+                recall = len(correct_set) / len(gold_set)
+
+                print(round(threshold, 3), round(precision, 3), round(recall, 3), file=output)
+        print("Analysis Done")
