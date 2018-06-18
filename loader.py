@@ -5,12 +5,12 @@ from torch.utils.data import Dataset
 
 class TextDataset(Dataset):
     def __init__(self, filepath, word_vocab=None, pos_vocab=None):
-        self.max_sentence_length = 111
+        self.max_sentence_length = 150
         self.labels = {
-                'country': 0, 'team': 1,
-                'starring': 2, 'director': 3,
-                'child': 4, 'successor': 5
-            }
+            'country': 0, 'team': 1,
+            'starring': 2, 'director': 3,
+            'child': 4, 'successor': 5
+        }
 
         data = self.parse_line(filepath)
 
@@ -26,6 +26,7 @@ class TextDataset(Dataset):
         hannanum = Hannanum()
         lines = [line.strip() for line in open(path, "r", encoding="utf-8")]
         data = []
+        # self.max_sentence_length = 0
         for line in lines:
             sbj, obj, rel, src = line.split("\t")
 
@@ -45,6 +46,7 @@ class TextDataset(Dataset):
             # tokens = [p[0] + '/' + p[1] for p in hannanum.pos(src)]
             tokens = hannanum.morphs(src)
             print(tokens)
+            # self.max_sentence_length = max(self.max_sentence_length, len(tokens))
 
             pos1, pos2 = self.get_relative_position(tokens, e1, e2)
 

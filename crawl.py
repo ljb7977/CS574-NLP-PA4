@@ -1,73 +1,53 @@
-import requests
+import re
 
-page_prefix = "https://ko.wikipedia.org/api/rest_v1/page/summary/"
+from SPARQLWrapper import SPARQLWrapper, JSON
 
 
-def get_wiki(sbj):
+def sendQuery(item):
+    prefix = 'prefix dbpedia: <http://ko.dbpedia.org/resource/> prefix dbpedia-owl: <http://dbpedia.org/ontology/> select ?abstract where {  <http://ko.dbpedia.org/resource/'
+    suffix = '> dbpedia-owl:wikiPageRedirects*/dbpedia-owl:abstract ?abstract .}'
+    query = prefix + item + suffix
+
+    sparql = SPARQLWrapper("http://ko.dbpedia.org/sparql")
+    sparql.setReturnFormat(JSON)
+    sparql.setQuery(query)
     try:
-        res = requests.get(page_prefix+sbj)
-        content = res.json()['extract']
-        return content.replace("\n", "")
-    except Exception:
+        result = sparql.query().convert()['results']['bindings'][0]['abstract']['value']
+        return str(result)
+    except:
         return None
 
 
-def make_simply(word):
-    word = word.replace("_", " ").strip()
-    left = word.find("(")
-    if left == -1:
-        return word
-    right = word.find(")")
-    if right == -1:
-        return word
-
-    return word[:left] + word[right + 1:]
-
-
-def reduce_content(content):
-    sbj_loc = content.find("<< _sbj_ >>")
-    obj_loc = content.find("<< _obj_ >>")
-    start_p = max(sbj_loc, obj_loc) + 10
-
-    for i in range(start_p, len(content)):
-        if content[i] == ".":
-            return content[:i+1]
-    return content
-
-
-def try_to_changing(triple_format):
-    parsed = triple_format.split("\t")
-    sbj = parsed[0]
-    relation = parsed[1]
-    obj = parsed[2]
-    content = get_wiki(sbj)
-    if content is None:
-        return triple_format
-    sbj_simple = make_simply(sbj)
-    obj_simple = make_simply(obj)
-
-    if sbj_simple in content and obj_simple in content:
-        changed_content = reduce_content(content.replace(sbj_simple, "<< _sbj_ >>").replace(obj_simple, "<< _obj_ >>"))
-        return sbj + "\t" + obj + "\t" + relation + "\t" + changed_content + "\n"
-    else:
-        return triple_format
-
-
-def main():
-    f1 = open('./data/triples.nt', 'r', encoding='utf-8')
-    f2 = open('./data/triples_new.nt', 'w', encoding='utf-8')
-    i = 1
-    while True:
-        print(i)
-        i += 1
-        origin = f1.readline()
-        if origin == '':
-            f2.write(origin)
-            break
-        f2.write(try_to_changing(origin))
-    f1.close()
-    f2.close()
-
-
 if __name__ == "__main__":
-    main()
+    datapath = "data/triples.nt"
+    lines = [line.strip() for line in open(datapath, "r", encoding="utf-8")]
+
+    with open("new_data.tsv", "w", encoding="utf-8") as output:
+        for i, line in enumerate(lines):
+            sbj, rel, obj, _ = line.split("\t")
+
+            dat = sendQuery(sbj)
+
+            sbj2 = re.sub(r'\(.*\)', "", sbj.replace("_", " ")).strip()
+            obj2 = re.sub(r'\(.*\)', "", obj.replace("_", " ")).strip()
+
+            print(i, "th entry : ", sbj2, rel, obj2)
+
+            if dat is None:
+                continue
+
+            n = 1  # run at least once
+            while n:
+                dat, n = re.subn(r'\([^()]*\)', '', dat)  # remove non-nested/flat balanced parts
+
+            sentences = [sentence+u"다." for sentence in dat.split(u"다.")[:-1]]
+            for sentence in sentences:
+                # print(sentence)
+                sentence = sentence.strip()
+
+                print(sentence)
+                if sbj2 in sentence:
+                    result = sentence.replace(sbj2, " << _sbj_ >> ", 1)
+                    if obj2 in result:
+                        result = result.replace(obj2, " << _obj_ >> ", 1)
+                        print("\t".join((sbj, obj, rel, result)), file=output)
