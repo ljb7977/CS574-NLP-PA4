@@ -15,8 +15,7 @@ def my_collate(batch):
 
 
 class Trainer():
-    def __init__(self, train_path="data/new_data.tsv",
-                 test_path="data/gold_test.tsv", learningRate=0.001):
+    def __init__(self, train_path, test_path, learning_rate=0.001):
         self.train_set = loader.TextDataset(train_path)
         self.test_set = loader.TextDataset(test_path, word_vocab=self.train_set.word2idx,
                                            pos_vocab=self.train_set.pos2idx)
@@ -39,7 +38,7 @@ class Trainer():
         }
         batch_size = 4
         self.cnn_model = model.CNN_Text(args)
-        self.learningRate = learningRate
+        self.learningRate = learning_rate
         self.train_loader = torch.utils.data.DataLoader(self.train_set, batch_size=batch_size,
                                                         shuffle=True, num_workers=4)
         self.test_loader = torch.utils.data.DataLoader(self.test_set, batch_size=1,
@@ -58,7 +57,6 @@ class Trainer():
             print("step: ", i, " loss: ", round(loss.item(), 2))
 
     def train(self, epochs=5):
-
         optimizer = optim.Adam(self.cnn_model.parameters(), lr=self.learningRate, weight_decay=0.05, amsgrad=True)
         criterion = nn.CrossEntropyLoss()
         for i in range(epochs):
@@ -66,7 +64,7 @@ class Trainer():
             self.epoch(criterion, optimizer)
             score = self.validate(epoch=i)
 
-            torch.save(self.cnn_model, "model/" + "_".join((str(i), str(round(score, 2)), "model.model")))
+            torch.save(self.cnn_model, "model/1/" + "_".join((str(i), str(round(score, 2)), "model.model")))
 
     def validate(self, epoch):
         self.cnn_model.eval()
@@ -83,11 +81,11 @@ class Trainer():
         print("on epoch ", epoch, ", Accuracy on dev set: ", 100 * correct / total)
         return 100 * correct / total
 
-    def test(self, load=False, model_name=None):
-        print("Test start for ", model_name)
+    def test(self, load=False, model_path=None):
+        print("Test start for ", model_path)
         self.cnn_model.eval()
         if load:
-            self.cnn_model = torch.load("model/2/" + model_name)
+            self.cnn_model = torch.load(model_path)
         result = []
         with torch.no_grad():
             for data in self.test_loader:
