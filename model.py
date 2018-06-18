@@ -19,9 +19,7 @@ class CNN_Text(nn.Module):
         self.word_embed = nn.Embedding(args.words_num, args.word_embed_dim)
         self.pos_embed = nn.Embedding(args.pos_num, args.pos_embed_dim)
 
-        self.input_layer = nn.Conv2d(Ci, Co, (K, WD+2*PD))
-
-        self.convs1 = nn.ModuleList([nn.Conv2d(Ci, Co, (K, D)) for K in Ks])
+        self.convs1 = nn.ModuleList([nn.Conv2d(Ci, Co, (K, WD+2*PD)) for K in Ks])
 
         '''
         self.conv13 = nn.Conv2d(Ci, Co, (3, D))
@@ -39,7 +37,7 @@ class CNN_Text(nn.Module):
     def forward(self, x):
         x = self.embed(x)  # (N, W, D)
 
-        if self.args.static:
+        if self.args['static']:
             x = Variable(x)
 
         x = x.unsqueeze(1)  # (N, Ci, W, D)
