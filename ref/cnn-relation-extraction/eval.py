@@ -35,7 +35,7 @@ print("")
 
 def eval():
     with tf.device('/cpu:0'):
-        x_text, pos1, pos2, y = data_helpers.load_data_and_labels(FLAGS.eval_dir)
+        x_text, pos1, pos2, y = data_helpers.make_tensor(FLAGS.eval_dir)
 
     # Map data into vocabulary
     text_path = os.path.join(FLAGS.checkpoint_dir, "..", "text_vocab")

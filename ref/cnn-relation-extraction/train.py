@@ -51,7 +51,7 @@ print("")
 
 def train():
     with tf.device('/cpu:0'):
-        x_text, pos1, pos2, y = data_helpers.load_data_and_labels(FLAGS.train_dir)
+        x_text, pos1, pos2, y = data_helpers.make_tensor(FLAGS.train_dir)
 
     # Build vocabulary
     # Example: x_text[3] = "A misty <e1>ridge</e1> uprises from the <e2>surge</e2>."
