@@ -35,8 +35,7 @@ class Trainer():
             'pos_num': len(self.train_set.pos2idx),
             'kernel_num': 128,
             'kernel_sizes': [2, 3, 4, 5],
-            'dropout': 0.5,
-            'static': False
+            'dropout': 0.5
         }
         batch_size = 50
         self.cnn_model = model.CNN_Text(args)
@@ -85,7 +84,7 @@ class Trainer():
         gold_set = set()
         for dat in self.test_set.data:
             gold_set.add((dat['sbj'], dat['obj'], dat['rel']))
-        print(gold_set)
+        # print(gold_set)
 
         with open("analysis_" + str(epoch) + ".txt", "w") as output:
             print("model: ", epoch, file=output)
@@ -98,7 +97,7 @@ class Trainer():
                     sbj, obj, rel, logits = r
                     indices = numpy.where(logits > threshold)[0].tolist()
                     # print(indices)
-                    print([(sbj[0], obj[0], i) for i in indices])
+                    # print([(sbj[0], obj[0], i) for i in indices])
                     predict_set.update([(sbj[0], obj[0], i) for i in indices])
 
                 correct_set = predict_set & gold_set
@@ -106,5 +105,5 @@ class Trainer():
                 precision = len(correct_set)/len(predict_set)
                 recall = len(correct_set) / len(gold_set)
 
-                print(round(threshold, 3), round(precision, 3), round(recall, 3), file=output)
+                print(round(threshold, 3), round(recall, 3), round(precision, 3), file=output)
         print("Analysis Done")

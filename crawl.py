@@ -1,5 +1,4 @@
 import re
-
 from SPARQLWrapper import SPARQLWrapper, JSON
 
 
