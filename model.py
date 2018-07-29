@@ -11,7 +11,6 @@ class CNN_Text(nn.Module):
 
         WD = args['word_embed_dim']
         PD = args['pos_embed_dim']
-        # D = args['hidden_dim']
         Ci = 1
         Co = args['kernel_num']
         Ks = args['kernel_sizes']
@@ -23,11 +22,6 @@ class CNN_Text(nn.Module):
 
         self.convs1 = nn.ModuleList([nn.Conv2d(Ci, Co, (K, WD+2*PD)) for K in Ks])
 
-        '''
-        self.conv13 = nn.Conv2d(Ci, Co, (3, D))
-        self.conv14 = nn.Conv2d(Ci, Co, (4, D))
-        self.conv15 = nn.Conv2d(Ci, Co, (5, D))
-        '''
         self.dropout = nn.Dropout(args['dropout'])
         self.fc1 = nn.Linear(len(Ks) * Co, 6)
 
@@ -48,19 +42,10 @@ class CNN_Text(nn.Module):
         tokens = torch.cat((tokens, pos1, pos2), 2)
 
         tokens = tokens.unsqueeze(1)  # (N, Ci, W, D)
-
         tokens = [F.relu(conv(tokens)).squeeze(3) for conv in self.convs1]  # [(N, Co, W), ...]*len(Ks)
-
         tokens = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in tokens]  # [(N, Co), ...]*len(Ks)
-
         tokens = torch.cat(tokens, 1)
 
-        '''
-        x1 = self.conv_and_pool(x,self.conv13) #(N,Co)
-        x2 = self.conv_and_pool(x,self.conv14) #(N,Co)
-        x3 = self.conv_and_pool(x,self.conv15) #(N,Co)
-        x = torch.cat((x1, x2, x3), 1) # (N,len(Ks)*Co)
-        '''
         tokens = self.dropout(tokens)  # (N, len(Ks)*Co)
         logit = self.fc1(tokens)  # (N, C)
         return logit
